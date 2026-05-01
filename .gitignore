@@ -1,0 +1,52 @@
+# Audio library files — keep large raw audio out of git
+audio/
+library/
+sounds/raw/
+sounds/previews/
+sounds/waveforms/
+*.wav
+*.aiff
+*.aif
+*.flac
+*.mp3
+*.ogg
+*.m4a
+*.aac
+*.opus
+*.wma
+
+# Generated waveform / preview data
+waveforms/
+previews/
+*.waveform.json
+*.peak.json
+
+# Scanned catalogue output (unless committed intentionally)
+# data/catalogue.json is tracked; generated scans are not:
+data/scanned_*.json
+data/library_scan_*.json
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+
+# Node / npm (if added later)
+node_modules/
+dist/
+build/
+.cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
