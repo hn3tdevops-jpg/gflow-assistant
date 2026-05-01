@@ -5,9 +5,11 @@ import BrowsePage from './pages/BrowsePage';
 import SoundDetailPage from './pages/SoundDetailPage';
 import CollectionsPage from './pages/CollectionsPage';
 import CratesPage from './pages/CratesPage';
+import { AudioProvider } from './context/AudioContext';
 
 function App() {
   return (
+    <AudioProvider>
     <BrowserRouter>
       <Layout>
         <Routes>
@@ -19,6 +21,7 @@ function App() {
         </Routes>
       </Layout>
     </BrowserRouter>
+    </AudioProvider>
   );
 }
 
