@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState } from 'react';
 
 interface AudioPlayerProps {
   src: string | null;
@@ -12,12 +12,15 @@ export default function AudioPlayer({ src }: AudioPlayerProps) {
   const [volume, setVolume] = useState(1);
   const [hasError, setHasError] = useState(false);
 
-  useEffect(() => {
+  // Reset playback state when src changes (derived-state-during-render pattern).
+  const [prevSrc, setPrevSrc] = useState(src);
+  if (src !== prevSrc) {
+    setPrevSrc(src);
     setIsPlaying(false);
     setCurrentTime(0);
     setDuration(0);
     setHasError(false);
-  }, [src]);
+  }
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);

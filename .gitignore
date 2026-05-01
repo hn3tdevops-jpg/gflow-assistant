@@ -30,20 +30,31 @@ dist-ssr
 # Audio files in library directories (tracked via catalogue.json only)
 library/**/*.wav
 library/**/*.mp3
+library/**/*.aif
 library/**/*.aiff
 library/**/*.flac
 library/**/*.ogg
+library/**/*.m4a
 
 # Generated waveform images
 waveforms/
 
 # Large binary audio files (top-level or in non-library dirs)
 *.wav
-*.mp3
+*.aif
 *.aiff
+*.mp3
 *.flac
 *.ogg
+*.m4a
+
+# Production audio asset directories (keep .gitkeep files)
+library/
+previews/
 
 # Do NOT ignore data/catalogue.json or public/data/catalogue.json
 !data/catalogue.json
 !public/data/catalogue.json
+
+# Keep placeholder files so directories are tracked in git
+!**/.gitkeep

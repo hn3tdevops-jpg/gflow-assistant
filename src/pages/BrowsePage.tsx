@@ -1,27 +1,56 @@
 import { useEffect, useState } from 'react';
-import type { SoundItem, FilterState } from '../types/catalogue';
+import { useSearchParams } from 'react-router-dom';
+import type { SoundItem, FilterState, ItemType } from '../types/catalogue';
 import FilterPanel from '../components/filters/FilterPanel';
 import SoundGrid from '../components/sounds/SoundGrid';
 import { applyFilters } from '../utils/filters';
 import { useFavorites } from '../hooks/useFavorites';
 import { useCrates } from '../hooks/useCrates';
 
-const DEFAULT_FILTERS: FilterState = {
-  query: '',
-  type: '',
-  category: '',
-  tags: [],
-  key: '',
-  bpmMin: '',
-  bpmMax: '',
-  license: '',
-  favoritesOnly: false,
-};
+const VALID_TYPES = new Set<ItemType>([
+  'instrument', 'sample', 'loop', 'preset', 'kit', 'collection', 'reference',
+]);
+
+function filtersFromParams(params: URLSearchParams): FilterState {
+  const typeParam = params.get('type') ?? '';
+  const type: ItemType | '' = VALID_TYPES.has(typeParam as ItemType)
+    ? (typeParam as ItemType)
+    : '';
+
+  const bpmMinRaw = parseInt(params.get('bpmMin') ?? '', 10);
+  const bpmMaxRaw = parseInt(params.get('bpmMax') ?? '', 10);
+
+  return {
+    query: params.get('query') ?? '',
+    type,
+    category: params.get('category') ?? '',
+    tags: [],
+    key: params.get('key') ?? '',
+    bpmMin: isNaN(bpmMinRaw) ? '' : bpmMinRaw,
+    bpmMax: isNaN(bpmMaxRaw) ? '' : bpmMaxRaw,
+    license: params.get('license') ?? '',
+    favoritesOnly: false,
+  };
+}
 
 export default function BrowsePage() {
   const [items, setItems] = useState<SoundItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
+  const [searchParams] = useSearchParams();
+  const [filters, setFilters] = useState<FilterState>(() =>
+    filtersFromParams(searchParams),
+  );
+
+  // Re-initialise filters when URL search params change (e.g. link from CollectionsPage).
+  // Pattern: store the previously seen params key and update during render to avoid
+  // running setState inside an effect.
+  const [prevParamsKey, setPrevParamsKey] = useState(() => searchParams.toString());
+  const currentParamsKey = searchParams.toString();
+  if (currentParamsKey !== prevParamsKey) {
+    setPrevParamsKey(currentParamsKey);
+    setFilters(filtersFromParams(searchParams));
+  }
+
   const { favorites, toggleFavorite } = useFavorites();
   const { crates, addSoundToCrate } = useCrates();
 
