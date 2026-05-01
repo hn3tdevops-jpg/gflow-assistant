@@ -51,6 +51,7 @@ waveforms/
 # Production audio asset directories (keep .gitkeep files)
 library/
 previews/
+public/previews/
 
 # Do NOT ignore data/catalogue.json or public/data/catalogue.json
 !data/catalogue.json

@@ -21,7 +21,7 @@
  */
 
 import { readdirSync, statSync } from 'fs';
-import { join, extname, basename, dirname, relative } from 'path';
+import { join, extname, basename, relative } from 'path';
 import { randomUUID } from 'crypto';
 
 const AUDIO_EXTENSIONS = new Set(['.wav', '.mp3', '.aif', '.aiff', '.flac', '.ogg', '.m4a']);
@@ -96,6 +96,7 @@ if (!rootDir) {
 }
 
 const audioFiles = findAudioFiles(rootDir);
+const rootName = basename(rootDir);
 const entries = audioFiles.map((filePath) => {
   const rel = relative(rootDir, filePath);
   const parts = rel.split('/');
@@ -115,7 +116,7 @@ const entries = audioFiles.map((filePath) => {
     bpm: extractBpm(filename),
     key: extractKey(filename),
     duration_seconds: null,
-    file_path: rel,
+    file_path: join(rootName, rel),
     preview_path: null,
     waveform_path: null,
     license: null,
