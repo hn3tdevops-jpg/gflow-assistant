@@ -614,5 +614,27 @@
     "bit_depth": null,
     "favorite": false,
     "production_notes": "SSL G-Bus comp: Ratio 4:1, Attack 30ms, Release Auto. EQ: +1dB at 30Hz, -0.5dB at 300Hz."
+  },
+  {
+    "id": "snd-demo-preview",
+    "title": "Example Kick (Preview Demo)",
+    "type": "sample",
+    "category": "Drums",
+    "subcategory": "Kick",
+    "description": "Placeholder entry demonstrating how preview_path should be set. Replace file_path and preview_path with real files. Supported formats: previews/file.mp3, /previews/file.mp3, or an absolute CDN URL such as https://cdn.example.com/previews/demo-kick.mp3.",
+    "tags": ["demo", "placeholder", "kick"],
+    "bpm": null,
+    "key": null,
+    "duration_seconds": null,
+    "file_path": "library/drums/kicks/demo_kick.wav",
+    "preview_path": "previews/demo-kick.mp3",
+    "waveform_path": null,
+    "license": null,
+    "source": null,
+    "format": "WAV",
+    "sample_rate": null,
+    "bit_depth": null,
+    "favorite": false,
+    "production_notes": "Delete or replace this entry. Add the real preview file to public/previews/demo-kick.mp3 (keep files < 1 MB)."
   }
 ]

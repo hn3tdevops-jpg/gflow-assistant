@@ -24,7 +24,7 @@ import { readdirSync, statSync } from 'fs';
 import { join, extname, basename, dirname, relative } from 'path';
 import { randomUUID } from 'crypto';
 
-const AUDIO_EXTENSIONS = new Set(['.wav', '.mp3', '.aiff', '.flac', '.ogg']);
+const AUDIO_EXTENSIONS = new Set(['.wav', '.mp3', '.aif', '.aiff', '.flac', '.ogg', '.m4a']);
 const KEYS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 /** Recursively find all audio files under rootDir */

@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import type { SoundItem, Crate } from '../../types/catalogue';
 import { useAudio } from '../../hooks/useAudio';
+import { resolvePreviewUrl } from '../../utils/preview';
 
 const TYPE_COLORS: Record<string, string> = {
   sample: 'bg-blue-600',
@@ -76,7 +77,7 @@ export default function SoundCard({ item, isFavorite, onToggleFavorite, crates, 
         {/* Preview button */}
         {item.preview_path ? (
           <button
-            onClick={() => toggle(item.id, `/${item.preview_path}`)}
+            onClick={() => toggle(item.id, resolvePreviewUrl(item.preview_path!))}
             className={`shrink-0 w-7 h-7 flex items-center justify-center rounded-full text-xs transition-colors ${
               isPlaying
                 ? 'bg-purple-600 text-white hover:bg-purple-700'

@@ -42,8 +42,8 @@ export default function BrowsePage() {
   );
 
   // Re-initialise filters when URL search params change (e.g. link from CollectionsPage).
-  // Pattern: store the previously seen params key and update during render to avoid
-  // running setState inside an effect.
+  // React recommends adjusting state during rendering (not inside an effect) for this pattern:
+  // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
   const [prevParamsKey, setPrevParamsKey] = useState(() => searchParams.toString());
   const currentParamsKey = searchParams.toString();
   if (currentParamsKey !== prevParamsKey) {

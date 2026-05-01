@@ -70,8 +70,14 @@ See `docs/METADATA_SCHEMA.md` for the full field reference and `docs/INGESTION_G
 ## Generating a catalogue with the scanner script
 
 ```bash
-node scripts/scan-library.mjs ./library > data/catalogue.json
+node scripts/scan-library.js ./library > data/catalogue.json
 cp data/catalogue.json public/data/catalogue.json
+```
+
+Or use the npm shortcut:
+
+```bash
+npm run scan -- ./library > data/catalogue.json
 ```
 
 The script recursively scans a folder for `.wav`, `.aif`, `.aiff`, `.flac`, `.mp3`, `.ogg`, and `.m4a` files and generates catalogue entries from folder structure and filenames. See `docs/INGESTION_GUIDE.md` for details.
