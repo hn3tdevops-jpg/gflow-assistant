@@ -25,7 +25,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         setPlayingId(null);
         audioRef.current = null;
       });
-      audio.play().catch(() => {
+      audio.play().catch((err) => {
+        console.error('Audio playback failed:', err);
         setPlayingId(null);
         audioRef.current = null;
       });
