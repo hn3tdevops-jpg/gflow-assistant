@@ -25,6 +25,7 @@ export default function SoundCard({ item, isFavorite, onToggleFavorite, crates, 
   const badgeColor = TYPE_COLORS[item.type] ?? 'bg-gray-600';
   const { playingId, toggle } = useAudio();
   const isPlaying = playingId === item.id;
+  const previewUrl = item.preview_path ? resolvePreviewUrl(item.preview_path) : null;
 
   return (
     <div className="bg-gray-800 hover:bg-gray-750 border border-gray-700 hover:border-gray-600 rounded-lg p-4 flex flex-col gap-3 transition-colors" style={{ '--tw-bg-opacity': '1' } as React.CSSProperties}>
@@ -75,9 +76,9 @@ export default function SoundCard({ item, isFavorite, onToggleFavorite, crates, 
 
       <div className="mt-auto pt-2 border-t border-gray-700 flex items-center gap-2">
         {/* Preview button */}
-        {item.preview_path ? (
+        {previewUrl ? (
           <button
-            onClick={() => toggle(item.id, resolvePreviewUrl(item.preview_path!))}
+            onClick={() => toggle(item.id, previewUrl)}
             className={`shrink-0 w-7 h-7 flex items-center justify-center rounded-full text-xs transition-colors ${
               isPlaying
                 ? 'bg-purple-600 text-white hover:bg-purple-700'

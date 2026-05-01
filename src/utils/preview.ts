@@ -7,7 +7,7 @@
  *   - Relative path (previews/file.mp3)                → prepended with "/"
  */
 export function resolvePreviewUrl(previewPath: string): string {
-  if (/^https?:\/\//i.test(previewPath)) return previewPath;
+  if (/^https:\/\//i.test(previewPath)) return previewPath;
   if (previewPath.startsWith('/')) return previewPath;
   return `/${previewPath}`;
 }
