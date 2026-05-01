@@ -6,7 +6,7 @@
  *   node scripts/scan-library.js <directory>
  *
  * Description:
- *   Recursively scans the given directory for audio files (.wav, .mp3, .aiff, .flac, .ogg).
+ *   Recursively scans the given directory for audio files (.wav, .mp3, .aif, .aiff, .flac, .ogg, .m4a).
  *   Generates catalogue.json entries from file metadata derived from filenames and folder structure.
  *   Outputs a JSON array to stdout which can be redirected to data/catalogue.json.
  *
@@ -20,7 +20,7 @@
  *   - Folder structure: library/<category>/<subcategory>/<file>
  */
 
-import { readdirSync, statSync } from 'fs';
+import { readdirSync } from 'fs';
 import { join, extname, basename, relative } from 'path';
 import { randomUUID } from 'crypto';
 
@@ -98,7 +98,7 @@ if (!rootDir) {
 const audioFiles = findAudioFiles(rootDir);
 const rootName = basename(rootDir);
 const entries = audioFiles.map((filePath) => {
-  const rel = relative(rootDir, filePath);
+  const rel = relative(rootDir, filePath).replace(/\\/g, '/');
   const parts = rel.split('/');
   const category = parts.length > 1 ? parts[0] : 'Uncategorized';
   const subcategory = parts.length > 2 ? parts[1] : null;
@@ -116,7 +116,7 @@ const entries = audioFiles.map((filePath) => {
     bpm: extractBpm(filename),
     key: extractKey(filename),
     duration_seconds: null,
-    file_path: join(rootName, rel),
+    file_path: rootName + '/' + rel,
     preview_path: null,
     waveform_path: null,
     license: null,
