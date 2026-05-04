@@ -1,10 +1,16 @@
 import { NavLink } from 'react-router-dom';
 
-const navLinks = [
+const catalogueLinks = [
   { to: '/', label: 'Library' },
   { to: '/browse', label: 'Browse' },
   { to: '/collections', label: 'Collections' },
   { to: '/crates', label: 'Crates' },
+];
+
+const lyricsLinks = [
+  { to: '/lyrics', label: 'Lyrics' },
+  { to: '/dictionary', label: 'Dictionary' },
+  { to: '/exports', label: 'Exports' },
 ];
 
 export default function Navbar() {
@@ -19,7 +25,7 @@ export default function Navbar() {
         </NavLink>
 
         <div className="flex items-center gap-1 ml-auto">
-          {navLinks.map(({ to, label }) => (
+          {catalogueLinks.map(({ to, label }) => (
             <NavLink
               key={to}
               to={to}
@@ -28,6 +34,26 @@ export default function Navbar() {
                 `px-3 py-1.5 rounded text-sm font-medium transition-colors ${
                   isActive
                     ? 'bg-purple-600 text-white'
+                    : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                }`
+              }
+            >
+              {label}
+            </NavLink>
+          ))}
+
+          {/* Divider */}
+          <span className="w-px h-5 bg-gray-700 mx-1" aria-hidden="true" />
+
+          {lyricsLinks.map(({ to, label }) => (
+            <NavLink
+              key={to}
+              to={to}
+              end={to === '/lyrics'}
+              className={({ isActive }) =>
+                `px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                  isActive
+                    ? 'bg-emerald-600 text-white'
                     : 'text-gray-400 hover:text-white hover:bg-gray-800'
                 }`
               }
