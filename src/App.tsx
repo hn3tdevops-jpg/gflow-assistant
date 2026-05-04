@@ -5,6 +5,11 @@ import BrowsePage from './pages/BrowsePage';
 import SoundDetailPage from './pages/SoundDetailPage';
 import CollectionsPage from './pages/CollectionsPage';
 import CratesPage from './pages/CratesPage';
+import LyricsListPage from './pages/lyrics/LyricsListPage';
+import LyricsNewPage from './pages/lyrics/LyricsNewPage';
+import LyricsDetailPage from './pages/lyrics/LyricsDetailPage';
+import DictionaryPage from './pages/DictionaryPage';
+import ExportsPage from './pages/ExportsPage';
 import { AudioProvider } from './context/AudioContext';
 
 function App() {
@@ -18,6 +23,11 @@ function App() {
           <Route path="/sounds/:id" element={<SoundDetailPage />} />
           <Route path="/collections" element={<CollectionsPage />} />
           <Route path="/crates" element={<CratesPage />} />
+          <Route path="/lyrics" element={<LyricsListPage />} />
+          <Route path="/lyrics/new" element={<LyricsNewPage />} />
+          <Route path="/lyrics/:id" element={<LyricsDetailPage />} />
+          <Route path="/dictionary" element={<DictionaryPage />} />
+          <Route path="/exports" element={<ExportsPage />} />
         </Routes>
       </Layout>
     </BrowserRouter>
