@@ -29,7 +29,7 @@ function runExport(project: LyricProject, format: VoiceExportFormat): string {
 
 export default function ExportsPage() {
   const { projects } = useLyricsProjects();
-  const [selectedId, setSelectedId] = useState<string>('');
+  const [selectedId, setSelectedId] = useState<string>(() => projects[0]?.id ?? '');
   const [format, setFormat] = useState<VoiceExportFormat>('pronunciation_sheet');
   const [copied, setCopied] = useState(false);
 

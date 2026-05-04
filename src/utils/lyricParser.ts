@@ -33,7 +33,11 @@ function wordToLyricWord(
   raw: string,
   dict: Record<string, PronunciationDictionaryEntry>,
 ): LyricWord {
-  const clean = raw.replace(/[^a-zA-Z'-]/g, '');
+  // Normalize Unicode curly quotes and em/en-dashes to ASCII before cleaning
+  const normalized = raw
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u2013\u2014]/g, '-');
+  const clean = normalized.replace(/[^a-zA-Z'-]/g, '');
   if (!clean) {
     return {
       id: crypto.randomUUID(),

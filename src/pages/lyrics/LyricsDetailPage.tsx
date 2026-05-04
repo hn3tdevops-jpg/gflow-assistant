@@ -86,6 +86,27 @@ export default function LyricsDetailPage() {
   const activeProject: LyricProject = project;
 
   function handleReparse() {
+    const hasEdits = activeProject.sections.some((s) =>
+      s.lines.some((l) =>
+        l.words.some(
+          (w) =>
+            w.stress ||
+            w.breathBefore ||
+            (w.pauseAfter && w.pauseAfter > 0) ||
+            w.performanceNotes ||
+            w.vowelStretch !== undefined ||
+            w.consonantSoftness !== undefined,
+        ),
+      ),
+    );
+    if (
+      hasEdits &&
+      !window.confirm(
+        'Re-parsing will discard all manual word annotations (stress, pauses, notes, etc.). Continue?',
+      )
+    ) {
+      return;
+    }
     const sections = parseLyrics(rawText, dictionary);
     const updated: LyricProject = { ...activeProject, sections, updatedAt: new Date().toISOString() };
     setProject(updated);
