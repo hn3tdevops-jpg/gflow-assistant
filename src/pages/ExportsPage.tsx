@@ -33,6 +33,7 @@ export default function ExportsPage() {
   const [format, setFormat] = useState<VoiceExportFormat>('pronunciation_sheet');
   const [copied, setCopied] = useState(false);
 
+  // Derive the selected project: prefer the explicitly selected id, fall back to first project
   const selectedProject =
     projects.find((p) => p.id === selectedId) ?? projects[0] ?? null;
 

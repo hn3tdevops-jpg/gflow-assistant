@@ -13,6 +13,17 @@ import {
 import WordEditor from '../../components/lyrics/WordEditor';
 import type { LyricProject, LyricWord, PhonemeDisplayMode, VoiceExportFormat } from '../../types/lyrics';
 
+function hasWordAnnotations(word: LyricWord): boolean {
+  return !!(
+    word.stress ||
+    word.breathBefore ||
+    (word.pauseAfter && word.pauseAfter > 0) ||
+    word.performanceNotes ||
+    word.vowelStretch !== undefined ||
+    word.consonantSoftness !== undefined
+  );
+}
+
 const EXPORT_LABELS: Record<VoiceExportFormat, string> = {
   pronunciation_sheet: 'Pronunciation Sheet',
   arpabet_text: 'ARPAbet Text',
@@ -45,7 +56,7 @@ export default function LyricsDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { getProject, saveProject } = useLyricsProjects();
-  const { dictionary } = useCustomDictionary();
+  const { dictionary, saveEntry } = useCustomDictionary();
 
   const [project, setProject] = useState<LyricProject | null>(() => {
     if (!id) return null;
@@ -87,17 +98,7 @@ export default function LyricsDetailPage() {
 
   function handleReparse() {
     const hasEdits = activeProject.sections.some((s) =>
-      s.lines.some((l) =>
-        l.words.some(
-          (w) =>
-            w.stress ||
-            w.breathBefore ||
-            (w.pauseAfter && w.pauseAfter > 0) ||
-            w.performanceNotes ||
-            w.vowelStretch !== undefined ||
-            w.consonantSoftness !== undefined,
-        ),
-      ),
+      s.lines.some((l) => l.words.some(hasWordAnnotations)),
     );
     if (
       hasEdits &&
@@ -141,6 +142,16 @@ export default function LyricsDetailPage() {
     const updated: LyricProject = { ...activeProject, sections };
     setProject(updated);
     persist(updated);
+  }
+
+  function handleSaveWordToDict(word: LyricWord) {
+    saveEntry({
+      word: word.original.toLowerCase(),
+      pronunciationSpelling: word.pronunciationSpelling,
+      phonemes: word.phonemes,
+      syllables: word.syllables,
+      source: 'custom',
+    });
   }
 
   function handleCopy() {
@@ -234,6 +245,7 @@ export default function LyricsDetailPage() {
                               key={w.id}
                               word={w}
                               onChange={(updated) => handleWordChange(section.id, line.id, updated)}
+                              onSaveToDict={() => handleSaveWordToDict(w)}
                             />
                           ))}
                       </div>

@@ -658,7 +658,7 @@ export function createPlaceholder(word: string): PronunciationDictionaryEntry {
     pronunciationSpelling: upper,
     phonemes: [{ token: upper, displayMode: 'simple' }],
     syllables: [{ text: word, phonemes: [{ token: upper, displayMode: 'simple' }] }],
-    source: 'custom',
+    source: 'builtin',
   };
 }
 
