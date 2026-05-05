@@ -81,7 +81,7 @@ function buildTitle(filename) {
   return filename
     .replace(/[_-]/g, ' ')
     .replace(/\b\d{2,3}bpm\b/gi, '')
-    .replace(/\b(wav|mp3|aiff|flac|ogg)\b/gi, '')
+    .replace(/\b(wav|mp3|aif|aiff|flac|ogg|m4a)\b/gi, '')
     .replace(/\s+/g, ' ')
     .trim()
     .split(' ')
