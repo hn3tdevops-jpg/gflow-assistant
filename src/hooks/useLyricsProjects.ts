@@ -148,7 +148,7 @@ export function useLyricsProjects() {
     const lyric: Lyric = {
       ...source,
       id: crypto.randomUUID(),
-      title: title?.trim() || `${source.title} (Copy)` ,
+      title: title?.trim() || `${source.title} (Copy)`,
       sections: normalizeSections(version.sections.map((section) => ({ ...section, id: crypto.randomUUID() }))),
       status: 'draft',
       currentContent: version.content,
