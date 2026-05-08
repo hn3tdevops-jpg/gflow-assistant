@@ -1,10 +1,11 @@
-import { act, render, renderHook, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import Navbar from '../components/layout/Navbar';
 import { useLyricsProjects } from '../hooks/useLyricsProjects';
 import type { Lyric } from '../types/lyrics';
 import { buildLyricExport } from '../utils/lyricsStudioExports';
 import { createEmptyLyric, filterLyrics } from '../utils/lyricsStudio';
+import LyricsDetailPage from '../pages/lyrics/LyricsDetailPage';
 
 beforeEach(() => {
   localStorage.clear();
@@ -143,5 +144,115 @@ describe('mobile navigation', () => {
     expect(screen.getAllByRole('link', { name: 'Projects' }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole('link', { name: 'Tools' }).length).toBeGreaterThan(0);
     expect(screen.getByRole('link', { name: 'Account' })).toBeInTheDocument();
+  });
+});
+
+describe('lyrics detail page regressions', () => {
+  function readStoredLyric(lyricId: string) {
+    const raw = localStorage.getItem('gflow:studio:lyrics:v2');
+    const all = raw ? (JSON.parse(raw) as Lyric[]) : [];
+    return all.find((entry) => entry.id === lyricId);
+  }
+
+  function renderDetailPage(lyricId: string) {
+    return render(
+      <MemoryRouter initialEntries={[`/lyrics/${lyricId}`]}>
+        <Routes>
+          <Route path="/lyrics/:id" element={<LyricsDetailPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+  }
+
+  it('does not autosave when content remains unchanged', () => {
+    vi.useFakeTimers();
+    localStorage.setItem('gflow:studio:user', JSON.stringify('user-a'));
+    const { result } = renderHook(() => useLyricsProjects());
+
+    let lyricId = '';
+    let originalUpdatedAt = '';
+    act(() => {
+      const created = result.current.createLyric({ title: 'Idle Song' });
+      lyricId = created.id;
+      originalUpdatedAt = created.updatedAt;
+    });
+
+    renderDetailPage(lyricId);
+
+    act(() => {
+      vi.advanceTimersByTime(3000);
+    });
+
+    expect(readStoredLyric(lyricId)?.updatedAt).toBe(originalUpdatedAt);
+    vi.useRealTimers();
+  });
+
+  it('persists favorite changes from detail page', async () => {
+    localStorage.setItem('gflow:studio:user', JSON.stringify('user-a'));
+    const { result } = renderHook(() => useLyricsProjects());
+
+    let lyricId = '';
+    act(() => {
+      lyricId = result.current.createLyric({ title: 'Favorite Song' }).id;
+    });
+
+    renderDetailPage(lyricId);
+    fireEvent.click(screen.getByRole('button', { name: '☆ Favorite' }));
+
+    await waitFor(() => expect(readStoredLyric(lyricId)?.isFavorite).toBe(true));
+    expect(screen.getByRole('button', { name: '★ Favorited' })).toBeInTheDocument();
+  });
+
+  it('persists archive and unarchive from detail page', async () => {
+    localStorage.setItem('gflow:studio:user', JSON.stringify('user-a'));
+    const { result } = renderHook(() => useLyricsProjects());
+
+    let lyricId = '';
+    act(() => {
+      lyricId = result.current.createLyric({ title: 'Archive Song' }).id;
+    });
+
+    renderDetailPage(lyricId);
+    fireEvent.click(screen.getByRole('button', { name: 'Archive lyric' }));
+    await waitFor(() => expect(readStoredLyric(lyricId)?.archivedAt).toBeTruthy());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Restore from archive' }));
+    await waitFor(() => expect(readStoredLyric(lyricId)?.archivedAt).toBeUndefined());
+  });
+
+  it('updates visible editor content after restoring a version', async () => {
+    localStorage.setItem('gflow:studio:user', JSON.stringify('user-a'));
+    const { result } = renderHook(() => useLyricsProjects());
+
+    let lyricId = '';
+    act(() => {
+      const created = result.current.createLyric({ title: 'Version Restore Song' });
+      lyricId = created.id;
+      result.current.saveLyric({
+        ...created,
+        currentContent: 'Line A',
+        sections: [{ ...created.sections[0], content: 'Line A' }],
+      });
+    });
+
+    act(() => {
+      result.current.saveVersion(lyricId, 'Original');
+    });
+
+    act(() => {
+      const latest = result.current.getLyric(lyricId);
+      if (!latest) throw new Error('lyric missing');
+      result.current.saveLyric({
+        ...latest,
+        currentContent: 'Line B',
+        sections: [{ ...latest.sections[0], content: 'Line B' }],
+      });
+    });
+
+    renderDetailPage(lyricId);
+    expect(screen.getByDisplayValue('Line B')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Restore' }));
+    await waitFor(() => expect(screen.getByDisplayValue('Line A')).toBeInTheDocument());
   });
 });
