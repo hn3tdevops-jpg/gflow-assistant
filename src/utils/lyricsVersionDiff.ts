@@ -13,6 +13,10 @@ export function compareTextLines(previous: string, current: string): DiffLine[] 
     const prev = prevLines[i];
     const cur = curLines[i];
 
+    if (prev === undefined && cur === undefined) {
+      continue;
+    }
+
     if (prev === cur) {
       lines.push({ kind: 'unchanged', text: cur ?? '' });
       continue;
