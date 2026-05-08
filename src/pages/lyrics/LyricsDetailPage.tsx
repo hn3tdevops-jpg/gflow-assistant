@@ -246,8 +246,10 @@ export default function LyricsDetailPage() {
           <input value={activeLyric.songKey ?? ''} onChange={(e) => patchLyric((current) => ({ ...current, songKey: e.target.value }))} placeholder="Key" className="bg-gray-800 border border-gray-700 rounded px-3 py-2" />
           <button
             onClick={() => {
-              patchLyric((current) => ({ ...current, isFavorite: !current.isFavorite }));
-              toggleFavorite(activeLyric.id);
+              const updated = toggleFavorite(activeLyric.id);
+              if (!updated) return;
+              setLyric(updated);
+              setLastSaved(updated.updatedAt);
             }}
             className="bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm"
           >
@@ -314,12 +316,10 @@ export default function LyricsDetailPage() {
             <button
               onClick={() => {
                 const shouldArchive = !activeLyric.archivedAt;
-                patchLyric((current) => ({
-                  ...current,
-                  status: shouldArchive ? 'archived' : current.status === 'archived' ? 'draft' : current.status,
-                  archivedAt: shouldArchive ? new Date().toISOString() : undefined,
-                }));
-                setArchived(activeLyric.id, shouldArchive);
+                const updated = setArchived(activeLyric.id, shouldArchive);
+                if (!updated) return;
+                setLyric(updated);
+                setLastSaved(updated.updatedAt);
               }}
               className="px-3 py-2 rounded bg-gray-800 hover:bg-gray-700 text-sm"
             >

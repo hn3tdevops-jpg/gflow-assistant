@@ -73,22 +73,28 @@ export function useLyricsProjects() {
   }, [setAllLyrics, setAllVersions, userId]);
 
   const setArchived = useCallback((id: string, archived: boolean) => {
+    let updatedLyric: Lyric | undefined;
     setAllLyrics((prev) => prev.map((lyric) => {
       if (lyric.id !== id || !belongsToUser(userId, lyric)) return lyric;
-      return {
+      updatedLyric = {
         ...lyric,
         status: archived ? 'archived' : lyric.status === 'archived' ? 'draft' : lyric.status,
         archivedAt: archived ? new Date().toISOString() : undefined,
         updatedAt: new Date().toISOString(),
       };
+      return updatedLyric;
     }));
+    return updatedLyric;
   }, [setAllLyrics, userId]);
 
   const toggleFavorite = useCallback((id: string) => {
+    let updatedLyric: Lyric | undefined;
     setAllLyrics((prev) => prev.map((lyric) => {
       if (lyric.id !== id || !belongsToUser(userId, lyric)) return lyric;
-      return { ...lyric, isFavorite: !lyric.isFavorite, updatedAt: new Date().toISOString() };
+      updatedLyric = { ...lyric, isFavorite: !lyric.isFavorite, updatedAt: new Date().toISOString() };
+      return updatedLyric;
     }));
+    return updatedLyric;
   }, [setAllLyrics, userId]);
 
   const getLyricVersions = useCallback((lyricId: string) => {
