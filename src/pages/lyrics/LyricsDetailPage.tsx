@@ -31,6 +31,10 @@ function editableDraftKey(lyric: Lyric): string {
   });
 }
 
+function hasDraftChanges(left: Lyric, right: Lyric): boolean {
+  return editableDraftKey(left) !== editableDraftKey(right);
+}
+
 export default function LyricsDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -70,7 +74,7 @@ export default function LyricsDetailPage() {
     }
     setLyric((current) => {
       if (!current || current.id !== persistedLyric.id) return persistedLyric;
-      if (editableDraftKey(current) !== editableDraftKey(persistedLyric)) return current;
+      if (hasDraftChanges(current, persistedLyric)) return current;
       if (
         current.isFavorite === persistedLyric.isFavorite
         && current.archivedAt === persistedLyric.archivedAt
@@ -91,7 +95,8 @@ export default function LyricsDetailPage() {
     const timer = window.setTimeout(() => {
       const latest = getLyric(lyric.id);
       if (!latest) return;
-      if (editableDraftKey(latest) === localEditableKey) return;
+      const latestEditableKey = editableDraftKey(latest);
+      if (latestEditableKey === localEditableKey) return;
       saveLyric({
         ...lyric,
         ownerUserId: latest.ownerUserId,

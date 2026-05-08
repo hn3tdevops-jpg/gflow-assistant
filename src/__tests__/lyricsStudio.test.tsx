@@ -164,7 +164,7 @@ describe('lyrics detail page regressions', () => {
     );
   }
 
-  it('does not keep autosaving when idle', () => {
+  it('does not autosave when content remains unchanged', () => {
     vi.useFakeTimers();
     localStorage.setItem('gflow:studio:user', JSON.stringify('user-a'));
     const { result } = renderHook(() => useLyricsProjects());
