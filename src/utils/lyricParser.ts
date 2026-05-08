@@ -1,4 +1,4 @@
-import type { LyricSection, LyricLine, LyricWord, PronunciationDictionaryEntry } from '../types/lyrics';
+import type { LegacyLyricSection, LyricLine, LyricWord, PronunciationDictionaryEntry } from '../types/lyrics';
 import { lookupWord } from './phonemeDictionary';
 
 const SECTION_LABEL_RE = /^\[.*\]$|^(verse|chorus|bridge|outro|intro|hook|pre-chorus|breakdown)/i;
@@ -61,9 +61,9 @@ function wordToLyricWord(
 export function parseLyrics(
   text: string,
   dict: Record<string, PronunciationDictionaryEntry>,
-): LyricSection[] {
+): LegacyLyricSection[] {
   const rawSections = text.split(/\n{2,}/);
-  const sections: LyricSection[] = [];
+  const sections: LegacyLyricSection[] = [];
 
   for (const rawSection of rawSections) {
     const trimmed = rawSection.trim();

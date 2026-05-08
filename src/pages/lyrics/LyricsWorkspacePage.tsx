@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useLyricsProjects } from '../../hooks/useLyricsProjects';
 import type { LyricSectionType } from '../../types/lyrics';
@@ -17,18 +17,19 @@ export default function LyricsWorkspacePage() {
     return <p className="text-gray-400">Lyric not found.</p>;
   }
 
-  const sections = normalizeSections(lyric.sections);
+  const activeLyric = lyric;
+  const sections = normalizeSections(activeLyric.sections);
   const activeSection = sections.find((section) => section.id === activeSectionId) ?? sections[0];
-  const stats = useMemo(() => countTextStats(lyric.currentContent), [lyric.currentContent]);
+  const stats = countTextStats(activeLyric.currentContent);
 
   function patchSection(content: string) {
     const nextSections = sections.map((section) => section.id === activeSection.id ? { ...section, content } : section);
-    saveLyric({ ...lyric, sections: nextSections, notes: rhymeNotes, currentContent: sectionsToText(nextSections) });
+    saveLyric({ ...activeLyric, sections: nextSections, notes: rhymeNotes, currentContent: sectionsToText(nextSections) });
   }
 
   function addQuickSection(type: LyricSectionType) {
     const nextSections = normalizeSections([...sections, createSection(type, sections.length)]);
-    saveLyric({ ...lyric, sections: nextSections, notes: rhymeNotes, currentContent: sectionsToText(nextSections) });
+    saveLyric({ ...activeLyric, sections: nextSections, notes: rhymeNotes, currentContent: sectionsToText(nextSections) });
     setActiveSectionId(nextSections[nextSections.length - 1].id);
   }
 
@@ -37,7 +38,7 @@ export default function LyricsWorkspacePage() {
       <aside className="bg-gray-900 border border-gray-800 rounded-xl p-3 space-y-2 lg:sticky lg:top-20 h-max">
         <div className="flex items-center justify-between">
           <h1 className="text-sm uppercase tracking-wider text-gray-400">Sections</h1>
-          <Link to={`/lyrics/${lyric.id}`} className="text-xs text-emerald-400">Exit</Link>
+          <Link to={`/lyrics/${activeLyric.id}`} className="text-xs text-emerald-400">Exit</Link>
         </div>
         <div className="space-y-1">
           {sections.map((section) => (
@@ -55,7 +56,7 @@ export default function LyricsWorkspacePage() {
       <section className="bg-gray-900 border border-gray-800 rounded-xl p-4 flex flex-col gap-4">
         <header className="flex flex-wrap gap-4 items-center justify-between">
           <div>
-            <h2 className="text-xl font-semibold">{lyric.title}</h2>
+            <h2 className="text-xl font-semibold">{activeLyric.title}</h2>
             <p className="text-sm text-gray-400">Focused writing mode</p>
           </div>
           <div className="text-xs text-gray-400 flex flex-wrap gap-3">
@@ -78,7 +79,7 @@ export default function LyricsWorkspacePage() {
             value={rhymeNotes}
             onChange={(event) => {
               setRhymeNotes(event.target.value);
-              saveLyric({ ...lyric, notes: event.target.value });
+              saveLyric({ ...activeLyric, notes: event.target.value });
             }}
             rows={4}
             className="mt-1 w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm"

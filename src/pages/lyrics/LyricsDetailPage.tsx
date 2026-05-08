@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useLyricsProjects } from '../../hooks/useLyricsProjects';
 import type { Lyric, LyricSectionType, LyricStatus, StudioExportFormat } from '../../types/lyrics';
@@ -34,13 +34,14 @@ export default function LyricsDetailPage() {
   const [exportFormat, setExportFormat] = useState<StudioExportFormat>('txt');
   const [compareLeft, setCompareLeft] = useState('');
   const [compareRight, setCompareRight] = useState('');
+  const [loadedId, setLoadedId] = useState(() => id ?? '');
 
-  useEffect(() => {
-    if (!id) return;
-    const next = getLyric(id) ?? null;
+  if ((id ?? '') !== loadedId) {
+    const next = id ? getLyric(id) ?? null : null;
+    setLoadedId(id ?? '');
     setLyric(next);
-    if (next) setLastSaved(next.updatedAt);
-  }, [getLyric, id]);
+    setLastSaved(next?.updatedAt ?? '');
+  }
 
   useEffect(() => {
     if (!lyric) return;
@@ -62,14 +63,14 @@ export default function LyricsDetailPage() {
     );
   }
 
-  const versions = getLyricVersions(lyric.id);
+  const activeLyric: Lyric = lyric;
+  const versions = getLyricVersions(activeLyric.id);
 
   const leftVersion = versions.find((entry) => entry.id === compareLeft);
   const rightVersion = versions.find((entry) => entry.id === compareRight);
-  const diffLines = useMemo(
-    () => (leftVersion && rightVersion ? compareTextLines(leftVersion.content, rightVersion.content) : []),
-    [leftVersion, rightVersion],
-  );
+  const diffLines = leftVersion && rightVersion
+    ? compareTextLines(leftVersion.content, rightVersion.content)
+    : [];
 
   function patchLyric(updater: (current: Lyric) => Lyric) {
     setLyric((current) => (current ? updater(current) : current));
@@ -131,22 +132,22 @@ export default function LyricsDetailPage() {
   }
 
   function copyFullLyrics() {
-    navigator.clipboard.writeText(lyric.currentContent).then(() => setToast('Lyrics copied'));
+    navigator.clipboard.writeText(activeLyric.currentContent).then(() => setToast('Lyrics copied'));
   }
 
   function copySection(sectionId: string) {
-    const section = lyric.sections.find((entry) => entry.id === sectionId);
+    const section = activeLyric.sections.find((entry) => entry.id === sectionId);
     if (!section) return;
     navigator.clipboard.writeText(section.content).then(() => setToast(`${section.title} copied`));
   }
 
   function doExport() {
-    const content = buildLyricExport(lyric, exportFormat);
-    downloadTextFile(content, getExportFileName(lyric.title, exportFormat), exportFormat === 'json' ? 'application/json' : 'text/plain');
+    const content = buildLyricExport(activeLyric, exportFormat);
+    downloadTextFile(content, getExportFileName(activeLyric.title, exportFormat), exportFormat === 'json' ? 'application/json' : 'text/plain');
   }
 
   function saveNewVersion() {
-    const saved = saveVersion(lyric.id, versionName);
+    const saved = saveVersion(activeLyric.id, versionName);
     if (!saved) return;
     setVersionName('');
     setToast(`Saved version: ${saved.versionName}`);
@@ -157,40 +158,40 @@ export default function LyricsDetailPage() {
       <div className="flex flex-wrap items-center gap-2 text-sm text-gray-400">
         <Link to="/lyrics" className="hover:text-gray-200">Lyrics</Link>
         <span>/</span>
-        <span>{lyric.title}</span>
-        <Link to={`/lyrics/${lyric.id}/workspace`} className="ml-auto px-3 py-1.5 rounded bg-gray-800 hover:bg-gray-700 text-gray-200">Writing Mode</Link>
+        <span>{activeLyric.title}</span>
+        <Link to={`/lyrics/${activeLyric.id}/workspace`} className="ml-auto px-3 py-1.5 rounded bg-gray-800 hover:bg-gray-700 text-gray-200">Writing Mode</Link>
       </div>
 
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-        <input value={lyric.title} onChange={(e) => patchLyric((current) => ({ ...current, title: e.target.value }))} className="bg-gray-800 border border-gray-700 rounded px-3 py-2" aria-label="Title" />
-        <input value={lyric.artistName} onChange={(e) => patchLyric((current) => ({ ...current, artistName: e.target.value }))} placeholder="Artist / Persona" className="bg-gray-800 border border-gray-700 rounded px-3 py-2" />
-        <input value={lyric.projectName} onChange={(e) => patchLyric((current) => ({ ...current, projectName: e.target.value }))} placeholder="Project" className="bg-gray-800 border border-gray-700 rounded px-3 py-2" />
-        <input value={lyric.albumName} onChange={(e) => patchLyric((current) => ({ ...current, albumName: e.target.value }))} placeholder="Album / Collection" className="bg-gray-800 border border-gray-700 rounded px-3 py-2" />
-        <input value={lyric.genre} onChange={(e) => patchLyric((current) => ({ ...current, genre: e.target.value }))} placeholder="Genre" className="bg-gray-800 border border-gray-700 rounded px-3 py-2" />
-        <input value={lyric.mood} onChange={(e) => patchLyric((current) => ({ ...current, mood: e.target.value }))} placeholder="Mood" className="bg-gray-800 border border-gray-700 rounded px-3 py-2" />
+        <input value={activeLyric.title} onChange={(e) => patchLyric((current) => ({ ...current, title: e.target.value }))} className="bg-gray-800 border border-gray-700 rounded px-3 py-2" aria-label="Title" />
+        <input value={activeLyric.artistName} onChange={(e) => patchLyric((current) => ({ ...current, artistName: e.target.value }))} placeholder="Artist / Persona" className="bg-gray-800 border border-gray-700 rounded px-3 py-2" />
+        <input value={activeLyric.projectName} onChange={(e) => patchLyric((current) => ({ ...current, projectName: e.target.value }))} placeholder="Project" className="bg-gray-800 border border-gray-700 rounded px-3 py-2" />
+        <input value={activeLyric.albumName} onChange={(e) => patchLyric((current) => ({ ...current, albumName: e.target.value }))} placeholder="Album / Collection" className="bg-gray-800 border border-gray-700 rounded px-3 py-2" />
+        <input value={activeLyric.genre} onChange={(e) => patchLyric((current) => ({ ...current, genre: e.target.value }))} placeholder="Genre" className="bg-gray-800 border border-gray-700 rounded px-3 py-2" />
+        <input value={activeLyric.mood} onChange={(e) => patchLyric((current) => ({ ...current, mood: e.target.value }))} placeholder="Mood" className="bg-gray-800 border border-gray-700 rounded px-3 py-2" />
         <input
-          value={lyric.tags.join(', ')}
+          value={activeLyric.tags.join(', ')}
           onChange={(e) => patchLyric((current) => ({ ...current, tags: textToTags(e.target.value) }))}
           placeholder="Tags (comma-separated)"
           className="bg-gray-800 border border-gray-700 rounded px-3 py-2 md:col-span-2"
         />
-        <textarea value={lyric.notes ?? ''} onChange={(e) => patchLyric((current) => ({ ...current, notes: e.target.value }))} rows={3} placeholder="Notes" className="bg-gray-800 border border-gray-700 rounded px-3 py-2 md:col-span-2" />
+        <textarea value={activeLyric.notes ?? ''} onChange={(e) => patchLyric((current) => ({ ...current, notes: e.target.value }))} rows={3} placeholder="Notes" className="bg-gray-800 border border-gray-700 rounded px-3 py-2 md:col-span-2" />
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:col-span-2">
-          <select value={lyric.status} onChange={(e) => patchLyric((current) => ({ ...current, status: e.target.value as LyricStatus }))} className="bg-gray-800 border border-gray-700 rounded px-3 py-2">
+          <select value={activeLyric.status} onChange={(e) => patchLyric((current) => ({ ...current, status: e.target.value as LyricStatus }))} className="bg-gray-800 border border-gray-700 rounded px-3 py-2">
             {STATUS_OPTIONS.map((status) => <option key={status} value={status}>{status}</option>)}
           </select>
           <input
             type="number"
-            value={lyric.bpm ?? ''}
+            value={activeLyric.bpm ?? ''}
             onChange={(e) => patchLyric((current) => ({ ...current, bpm: e.target.value ? Number(e.target.value) : undefined }))}
             placeholder="BPM"
             className="bg-gray-800 border border-gray-700 rounded px-3 py-2"
           />
-          <input value={lyric.songKey ?? ''} onChange={(e) => patchLyric((current) => ({ ...current, songKey: e.target.value }))} placeholder="Key" className="bg-gray-800 border border-gray-700 rounded px-3 py-2" />
-          <button onClick={() => toggleFavorite(lyric.id)} className="bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm">{lyric.isFavorite ? '★ Favorited' : '☆ Favorite'}</button>
+          <input value={activeLyric.songKey ?? ''} onChange={(e) => patchLyric((current) => ({ ...current, songKey: e.target.value }))} placeholder="Key" className="bg-gray-800 border border-gray-700 rounded px-3 py-2" />
+          <button onClick={() => toggleFavorite(activeLyric.id)} className="bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm">{activeLyric.isFavorite ? '★ Favorited' : '☆ Favorite'}</button>
         </div>
         <div className="md:col-span-2 flex flex-wrap gap-2 text-xs text-gray-500">
-          <span>Last saved: {new Date(lastSaved || lyric.updatedAt).toLocaleTimeString()}</span>
+          <span>Last saved: {new Date(lastSaved || activeLyric.updatedAt).toLocaleTimeString()}</span>
           {toast && <span className="text-emerald-400">• {toast}</span>}
         </div>
       </div>
@@ -203,7 +204,7 @@ export default function LyricsDetailPage() {
           ))}
         </div>
         <div className="space-y-3">
-          {normalizeSections(lyric.sections).map((section) => (
+          {normalizeSections(activeLyric.sections).map((section) => (
             <section key={section.id} className="bg-gray-800 border border-gray-700 rounded-lg">
               <header className="flex items-center gap-2 px-3 py-2 border-b border-gray-700">
                 <input
@@ -247,15 +248,15 @@ export default function LyricsDetailPage() {
           </div>
           <div className="flex gap-2">
             <button
-              onClick={() => setArchived(lyric.id, !lyric.archivedAt)}
+              onClick={() => setArchived(activeLyric.id, !activeLyric.archivedAt)}
               className="px-3 py-2 rounded bg-gray-800 hover:bg-gray-700 text-sm"
             >
-              {lyric.archivedAt ? 'Restore from archive' : 'Archive lyric'}
+              {activeLyric.archivedAt ? 'Restore from archive' : 'Archive lyric'}
             </button>
             <button
               onClick={() => {
                 if (!window.confirm('Discard unsaved visual state and reload stored lyric?')) return;
-                const next = getLyric(lyric.id);
+                const next = getLyric(activeLyric.id);
                 if (next) setLyric(next);
               }}
               className="px-3 py-2 rounded bg-gray-800 hover:bg-gray-700 text-sm"
@@ -284,7 +285,7 @@ export default function LyricsDetailPage() {
                 <span className="text-xs text-gray-500">{new Date(version.createdAt).toLocaleString()}</span>
                 <button onClick={() => restoreVersion(version.id)} className="ml-auto text-xs text-emerald-300">Restore</button>
                 <button onClick={() => {
-                  const created = duplicateVersionAsDraft(version.id, `${lyric.title} (${version.versionName})`);
+                  const created = duplicateVersionAsDraft(version.id, `${activeLyric.title} (${version.versionName})`);
                   if (created) navigate(`/lyrics/${created.id}`);
                 }} className="text-xs text-gray-300">Duplicate</button>
               </div>

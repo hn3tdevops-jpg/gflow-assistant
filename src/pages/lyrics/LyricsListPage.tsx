@@ -160,7 +160,7 @@ export default function LyricsListPage() {
                 </button>
                 <button
                   onClick={() => {
-                    if (window.confirm(`Delete \"${lyric.title}\"?`)) {
+                    if (window.confirm(`Delete "${lyric.title}"?`)) {
                       deleteLyric(lyric.id);
                     }
                   }}

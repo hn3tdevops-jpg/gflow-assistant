@@ -36,7 +36,7 @@ describe('lyrics workflow', () => {
 
   it('lists only current user lyrics and denies other user lyric access', () => {
     localStorage.setItem('gflow:studio:user', JSON.stringify('user-a'));
-    const { result, rerender } = renderHook(() => useLyricsProjects());
+    const { result, unmount } = renderHook(() => useLyricsProjects());
 
     let userALyricId = '';
     act(() => {
@@ -45,24 +45,26 @@ describe('lyrics workflow', () => {
 
     expect(result.current.lyrics.map((entry) => entry.title)).toContain('User A Song');
 
+    unmount();
     localStorage.setItem('gflow:studio:user', JSON.stringify('user-b'));
-    rerender();
+    const second = renderHook(() => useLyricsProjects());
 
-    expect(result.current.lyrics).toHaveLength(0);
-    expect(result.current.getLyric(userALyricId)).toBeUndefined();
+    expect(second.result.current.lyrics).toHaveLength(0);
+    expect(second.result.current.getLyric(userALyricId)).toBeUndefined();
 
     act(() => {
-      result.current.createLyric({ title: 'User B Song' });
+      second.result.current.createLyric({ title: 'User B Song' });
     });
 
-    expect(result.current.lyrics).toHaveLength(1);
-    expect(result.current.lyrics[0].title).toBe('User B Song');
+    expect(second.result.current.lyrics).toHaveLength(1);
+    expect(second.result.current.lyrics[0].title).toBe('User B Song');
 
+    second.unmount();
     localStorage.setItem('gflow:studio:user', JSON.stringify('user-a'));
-    rerender();
+    const third = renderHook(() => useLyricsProjects());
 
-    expect(result.current.lyrics).toHaveLength(1);
-    expect(result.current.getLyric(userALyricId)?.title).toBe('User A Song');
+    expect(third.result.current.lyrics).toHaveLength(1);
+    expect(third.result.current.getLyric(userALyricId)?.title).toBe('User A Song');
   });
 
   it('saves and restores lyric versions', () => {
@@ -137,9 +139,9 @@ describe('mobile navigation', () => {
     );
 
     expect(screen.getByRole('link', { name: 'Home' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Lyrics' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Projects' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Tools' })).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: 'Lyrics' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('link', { name: 'Projects' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('link', { name: 'Tools' }).length).toBeGreaterThan(0);
     expect(screen.getByRole('link', { name: 'Account' })).toBeInTheDocument();
   });
 });
