@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useLyricsProjects } from '../../hooks/useLyricsProjects';
 import type { Lyric, LyricSectionType, LyricStatus, StudioExportFormat } from '../../types/lyrics';
@@ -11,6 +11,24 @@ const QUICK_SECTION_TYPES: LyricSectionType[] = ['Verse', 'Chorus', 'Hook', 'Bri
 
 function sectionButton(type: LyricSectionType) {
   return <span className="px-2 py-1 rounded bg-gray-800 text-xs">+ {type}</span>;
+}
+
+function editableDraftKey(lyric: Lyric): string {
+  return JSON.stringify({
+    title: lyric.title,
+    artistName: lyric.artistName,
+    projectName: lyric.projectName,
+    albumName: lyric.albumName,
+    genre: lyric.genre,
+    mood: lyric.mood,
+    tags: lyric.tags,
+    notes: lyric.notes ?? '',
+    status: lyric.status,
+    bpm: lyric.bpm ?? null,
+    songKey: lyric.songKey ?? '',
+    currentContent: lyric.currentContent,
+    sections: lyric.sections,
+  });
 }
 
 export default function LyricsDetailPage() {
@@ -34,24 +52,57 @@ export default function LyricsDetailPage() {
   const [exportFormat, setExportFormat] = useState<StudioExportFormat>('txt');
   const [compareLeft, setCompareLeft] = useState('');
   const [compareRight, setCompareRight] = useState('');
-  const [loadedId, setLoadedId] = useState(() => id ?? '');
+  const persistedLyric = id ? getLyric(id) ?? null : null;
 
-  if ((id ?? '') !== loadedId) {
-    const next = id ? getLyric(id) ?? null : null;
-    setLoadedId(id ?? '');
-    setLyric(next);
-    setLastSaved(next?.updatedAt ?? '');
-  }
+  const localEditableKey = useMemo(() => (lyric ? editableDraftKey(lyric) : ''), [lyric]);
+  const persistedEditableKey = useMemo(() => (persistedLyric ? editableDraftKey(persistedLyric) : ''), [persistedLyric]);
 
   useEffect(() => {
-    if (!lyric) return;
+    const next = id ? getLyric(id) ?? null : null;
+    setLyric(next);
+    setLastSaved(next?.updatedAt ?? '');
+  }, [getLyric, id]);
+
+  useEffect(() => {
+    if (!persistedLyric) {
+      setLyric(null);
+      return;
+    }
+    setLyric((current) => {
+      if (!current || current.id !== persistedLyric.id) return persistedLyric;
+      if (editableDraftKey(current) !== editableDraftKey(persistedLyric)) return current;
+      if (
+        current.isFavorite === persistedLyric.isFavorite
+        && current.archivedAt === persistedLyric.archivedAt
+        && current.updatedAt === persistedLyric.updatedAt
+      ) {
+        return current;
+      }
+      return persistedLyric;
+    });
+    setLastSaved(persistedLyric.updatedAt);
+  }, [persistedLyric]);
+
+  useEffect(() => {
+    if (!lyric || !persistedLyric) return;
+    if (lyric.id !== persistedLyric.id) return;
+    if (localEditableKey === persistedEditableKey) return;
+
     const timer = window.setTimeout(() => {
-      saveLyric(lyric);
+      const latest = getLyric(lyric.id);
+      if (!latest) return;
+      if (editableDraftKey(latest) === localEditableKey) return;
+      saveLyric({
+        ...lyric,
+        ownerUserId: latest.ownerUserId,
+        isFavorite: latest.isFavorite,
+        archivedAt: latest.archivedAt,
+      });
       setLastSaved(new Date().toISOString());
     }, 500);
 
     return () => window.clearTimeout(timer);
-  }, [lyric, saveLyric]);
+  }, [getLyric, localEditableKey, lyric, persistedEditableKey, persistedLyric, saveLyric]);
 
   if (!id || !lyric) {
     return (
@@ -188,7 +239,15 @@ export default function LyricsDetailPage() {
             className="bg-gray-800 border border-gray-700 rounded px-3 py-2"
           />
           <input value={activeLyric.songKey ?? ''} onChange={(e) => patchLyric((current) => ({ ...current, songKey: e.target.value }))} placeholder="Key" className="bg-gray-800 border border-gray-700 rounded px-3 py-2" />
-          <button onClick={() => toggleFavorite(activeLyric.id)} className="bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm">{activeLyric.isFavorite ? '★ Favorited' : '☆ Favorite'}</button>
+          <button
+            onClick={() => {
+              patchLyric((current) => ({ ...current, isFavorite: !current.isFavorite }));
+              toggleFavorite(activeLyric.id);
+            }}
+            className="bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm"
+          >
+            {activeLyric.isFavorite ? '★ Favorited' : '☆ Favorite'}
+          </button>
         </div>
         <div className="md:col-span-2 flex flex-wrap gap-2 text-xs text-gray-500">
           <span>Last saved: {new Date(lastSaved || activeLyric.updatedAt).toLocaleTimeString()}</span>
@@ -248,7 +307,15 @@ export default function LyricsDetailPage() {
           </div>
           <div className="flex gap-2">
             <button
-              onClick={() => setArchived(activeLyric.id, !activeLyric.archivedAt)}
+              onClick={() => {
+                const shouldArchive = !activeLyric.archivedAt;
+                patchLyric((current) => ({
+                  ...current,
+                  status: shouldArchive ? 'archived' : current.status === 'archived' ? 'draft' : current.status,
+                  archivedAt: shouldArchive ? new Date().toISOString() : undefined,
+                }));
+                setArchived(activeLyric.id, shouldArchive);
+              }}
               className="px-3 py-2 rounded bg-gray-800 hover:bg-gray-700 text-sm"
             >
               {activeLyric.archivedAt ? 'Restore from archive' : 'Archive lyric'}
@@ -283,7 +350,18 @@ export default function LyricsDetailPage() {
               <div key={version.id} className="bg-gray-800 border border-gray-700 rounded p-2 text-sm flex flex-wrap gap-2 items-center">
                 <span className="font-medium text-gray-200">{version.versionName}</span>
                 <span className="text-xs text-gray-500">{new Date(version.createdAt).toLocaleString()}</span>
-                <button onClick={() => restoreVersion(version.id)} className="ml-auto text-xs text-emerald-300">Restore</button>
+                <button
+                  onClick={() => {
+                    const restored = restoreVersion(version.id);
+                    if (!restored) return;
+                    setLyric(restored);
+                    setLastSaved(restored.updatedAt);
+                    setToast(`Restored: ${version.versionName}`);
+                  }}
+                  className="ml-auto text-xs text-emerald-300"
+                >
+                  Restore
+                </button>
                 <button onClick={() => {
                   const created = duplicateVersionAsDraft(version.id, `${activeLyric.title} (${version.versionName})`);
                   if (created) navigate(`/lyrics/${created.id}`);

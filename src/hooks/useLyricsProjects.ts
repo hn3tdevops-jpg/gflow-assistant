@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import type { Lyric, LyricVersion } from '../types/lyrics';
 import { useLocalStorage } from './useLocalStorage';
 import { useCurrentUser } from './useCurrentUser';
@@ -29,7 +29,7 @@ export function useLyricsProjects() {
     [allLyrics, allVersions, userId],
   );
 
-  function createLyric(seed?: Partial<Lyric>) {
+  const createLyric = useCallback((seed?: Partial<Lyric>) => {
     const lyric = { ...createEmptyLyric(userId), ...seed, ownerUserId: userId };
     const normalizedSections = normalizeSections(lyric.sections);
     const persisted = {
@@ -39,9 +39,9 @@ export function useLyricsProjects() {
     };
     setAllLyrics((prev) => [...prev, persisted]);
     return persisted;
-  }
+  }, [setAllLyrics, userId]);
 
-  function saveLyric(lyric: Lyric) {
+  const saveLyric = useCallback((lyric: Lyric) => {
     if (!belongsToUser(userId, lyric)) return;
     const normalizedSections = normalizeSections(lyric.sections);
     const updated: Lyric = {
@@ -59,20 +59,20 @@ export function useLyricsProjects() {
       next[idx] = updated;
       return next;
     });
-  }
+  }, [setAllLyrics, userId]);
 
-  function getLyric(id: string) {
+  const getLyric = useCallback((id: string) => {
     const lyric = allLyrics.find((entry) => entry.id === id);
     if (!lyric || !belongsToUser(userId, lyric)) return undefined;
     return lyric;
-  }
+  }, [allLyrics, userId]);
 
-  function deleteLyric(id: string) {
+  const deleteLyric = useCallback((id: string) => {
     setAllLyrics((prev) => prev.filter((entry) => entry.id !== id || !belongsToUser(userId, entry)));
     setAllVersions((prev) => prev.filter((version) => version.lyricId !== id));
-  }
+  }, [setAllLyrics, setAllVersions, userId]);
 
-  function setArchived(id: string, archived: boolean) {
+  const setArchived = useCallback((id: string, archived: boolean) => {
     setAllLyrics((prev) => prev.map((lyric) => {
       if (lyric.id !== id || !belongsToUser(userId, lyric)) return lyric;
       return {
@@ -82,24 +82,24 @@ export function useLyricsProjects() {
         updatedAt: new Date().toISOString(),
       };
     }));
-  }
+  }, [setAllLyrics, userId]);
 
-  function toggleFavorite(id: string) {
+  const toggleFavorite = useCallback((id: string) => {
     setAllLyrics((prev) => prev.map((lyric) => {
       if (lyric.id !== id || !belongsToUser(userId, lyric)) return lyric;
       return { ...lyric, isFavorite: !lyric.isFavorite, updatedAt: new Date().toISOString() };
     }));
-  }
+  }, [setAllLyrics, userId]);
 
-  function getLyricVersions(lyricId: string) {
+  const getLyricVersions = useCallback((lyricId: string) => {
     const lyric = getLyric(lyricId);
     if (!lyric) return [];
     return versions
       .filter((version) => version.lyricId === lyricId)
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  }
+  }, [getLyric, versions]);
 
-  function saveVersion(lyricId: string, versionName: string) {
+  const saveVersion = useCallback((lyricId: string, versionName: string) => {
     const lyric = getLyric(lyricId);
     if (!lyric) return undefined;
     const version: LyricVersion = {
@@ -121,9 +121,9 @@ export function useLyricsProjects() {
     };
     setAllVersions((prev) => [version, ...prev]);
     return version;
-  }
+  }, [getLyric, setAllVersions, userId]);
 
-  function restoreVersion(versionId: string) {
+  const restoreVersion = useCallback((versionId: string) => {
     const version = versions.find((entry) => entry.id === versionId);
     if (!version) return undefined;
     const lyric = getLyric(version.lyricId);
@@ -136,9 +136,9 @@ export function useLyricsProjects() {
     };
     saveLyric(restored);
     return restored;
-  }
+  }, [getLyric, saveLyric, versions]);
 
-  function duplicateVersionAsDraft(versionId: string, title?: string) {
+  const duplicateVersionAsDraft = useCallback((versionId: string, title?: string) => {
     const version = versions.find((entry) => entry.id === versionId);
     if (!version) return undefined;
     const source = getLyric(version.lyricId);
@@ -160,7 +160,7 @@ export function useLyricsProjects() {
     };
     setAllLyrics((prev) => [lyric, ...prev]);
     return lyric;
-  }
+  }, [getLyric, setAllLyrics, userId, versions]);
 
   return {
     userId,
