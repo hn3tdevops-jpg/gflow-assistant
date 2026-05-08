@@ -94,3 +94,18 @@ npm run build
 ```
 
 See `docs/DEPLOYMENT.md` for detailed hosting instructions including SPA routing configuration.
+
+---
+
+## Lyrics Management System (FGFlow Studio)
+
+FGFlow Studio now includes a full lyrics workflow built on the existing localStorage architecture:
+
+- **Lyrics Library** with search, status/project/tag/genre filters, sort options, favorites, and archived views.
+- **Lyric Detail Editor** with metadata editing, section controls (reorder, duplicate, collapse), autosave, copy, and export.
+- **Version History** to save named versions, restore old versions, duplicate versions into new drafts, and compare versions line-by-line.
+- **Songwriting Workspace** with focused editing, section navigator, sticky mobile quick-actions, and live word/line/character counts.
+- **Organization** page for project/album/artist grouping.
+- **Tools** pages for lyric import (plain text + auto section detection) and export (.txt / .md / .json + clipboard).
+
+Ownership is enforced through the existing local app pattern by scoping lyric data to the active local user identifier.

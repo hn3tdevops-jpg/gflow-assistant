@@ -1,144 +1,69 @@
-import { useState, useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useLyricsProjects } from '../hooks/useLyricsProjects';
-import {
-  exportPronunciationSheet,
-  exportArpabetText,
-  exportJSON,
-  exportAIVoicePrompt,
-  exportSSML,
-} from '../utils/lyricExports';
-import type { LyricProject, VoiceExportFormat } from '../types/lyrics';
-
-const FORMAT_LABELS: Record<VoiceExportFormat, string> = {
-  pronunciation_sheet: 'Pronunciation Sheet',
-  arpabet_text: 'ARPAbet Text',
-  json: 'JSON',
-  ai_voice_prompt: 'AI Voice Prompt',
-  ssml: 'SSML',
-};
-
-function runExport(project: LyricProject, format: VoiceExportFormat): string {
-  switch (format) {
-    case 'pronunciation_sheet': return exportPronunciationSheet(project);
-    case 'arpabet_text': return exportArpabetText(project);
-    case 'json': return exportJSON(project);
-    case 'ai_voice_prompt': return exportAIVoicePrompt(project);
-    case 'ssml': return exportSSML(project);
-  }
-}
+import type { StudioExportFormat } from '../types/lyrics';
+import { buildLyricExport, downloadTextFile, getExportFileName } from '../utils/lyricsStudioExports';
 
 export default function ExportsPage() {
-  const { projects } = useLyricsProjects();
-  const [selectedId, setSelectedId] = useState<string>(() => projects[0]?.id ?? '');
-  const [format, setFormat] = useState<VoiceExportFormat>('pronunciation_sheet');
+  const { lyrics } = useLyricsProjects();
+  const [lyricId, setLyricId] = useState('');
+  const [format, setFormat] = useState<StudioExportFormat>('txt');
   const [copied, setCopied] = useState(false);
 
-  // Derive the selected project: prefer the explicitly selected id, fall back to first project
-  const selectedProject =
-    projects.find((p) => p.id === selectedId) ?? projects[0] ?? null;
+  const selectedLyric = lyrics.find((lyric) => lyric.id === lyricId) ?? lyrics[0];
 
   const output = useMemo(
-    () => (selectedProject ? runExport(selectedProject, format) : ''),
-    [selectedProject, format],
+    () => (selectedLyric ? buildLyricExport(selectedLyric, format) : ''),
+    [format, selectedLyric],
   );
 
-  function handleCopy() {
+  function copyOutput() {
     navigator.clipboard.writeText(output).then(() => {
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setTimeout(() => setCopied(false), 1200);
     });
   }
 
-  function handleDownload() {
-    if (!output || !selectedProject) return;
-    const ext: Record<VoiceExportFormat, string> = {
-      pronunciation_sheet: 'txt',
-      arpabet_text: 'txt',
-      json: 'json',
-      ai_voice_prompt: 'txt',
-      ssml: 'xml',
-    };
-    const blob = new Blob([output], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${selectedProject.title.replace(/\s+/g, '_')}_${format}.${ext[format]}`;
-    a.click();
-    URL.revokeObjectURL(url);
+  function downloadOutput() {
+    if (!selectedLyric) return;
+    downloadTextFile(
+      output,
+      getExportFileName(selectedLyric.title, format),
+      format === 'json' ? 'application/json' : 'text/plain',
+    );
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100 p-6">
-      <div className="max-w-3xl mx-auto">
-        <h1 className="text-2xl font-bold text-white mb-2">Exports</h1>
-        <p className="text-gray-400 text-sm mb-8">Export your lyric projects in various formats.</p>
+    <div className="max-w-3xl mx-auto flex flex-col gap-5">
+      <h1 className="text-2xl font-bold">Export Lyrics</h1>
+      <p className="text-sm text-gray-400">Export lyrics as .txt, .md, or .json and copy directly to clipboard.</p>
 
-        {projects.length === 0 ? (
-          <div className="text-center py-20 text-gray-500">
-            <p className="text-lg font-medium mb-2">No projects to export</p>
-            <p className="text-sm">Create a lyric project first.</p>
+      {lyrics.length === 0 ? (
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-10 text-center">
+          <p className="text-gray-300 mb-2">No lyrics available to export.</p>
+          <Link to="/lyrics/new" className="text-emerald-400">Create lyric</Link>
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <select value={selectedLyric?.id ?? ''} onChange={(e) => setLyricId(e.target.value)} className="bg-gray-900 border border-gray-700 rounded px-3 py-2">
+              {lyrics.map((lyric) => <option key={lyric.id} value={lyric.id}>{lyric.title}</option>)}
+            </select>
+            <select value={format} onChange={(e) => setFormat(e.target.value as StudioExportFormat)} className="bg-gray-900 border border-gray-700 rounded px-3 py-2">
+              <option value="txt">Text (.txt)</option>
+              <option value="md">Markdown (.md)</option>
+              <option value="json">JSON (.json)</option>
+            </select>
           </div>
-        ) : (
-          <div className="space-y-5">
-            <div>
-              <label className="block text-sm text-gray-400 mb-1.5">Project</label>
-              <select
-                value={selectedProject?.id ?? ''}
-                onChange={(e) => setSelectedId(e.target.value)}
-                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500"
-              >
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.title}
-                  </option>
-                ))}
-              </select>
-            </div>
 
-            <div>
-              <label className="block text-sm text-gray-400 mb-1.5">Export Format</label>
-              <select
-                value={format}
-                onChange={(e) => setFormat(e.target.value as VoiceExportFormat)}
-                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500"
-              >
-                {(Object.keys(FORMAT_LABELS) as VoiceExportFormat[]).map((fmt) => (
-                  <option key={fmt} value={fmt}>
-                    {FORMAT_LABELS[fmt]}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <textarea readOnly value={output} rows={16} className="bg-gray-900 border border-gray-700 rounded px-3 py-2 font-mono text-xs" />
 
-            <div>
-              <label className="block text-sm text-gray-400 mb-1.5">Preview</label>
-              <textarea
-                readOnly
-                value={output}
-                rows={16}
-                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-gray-300 text-xs font-mono focus:outline-none resize-none"
-              />
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                onClick={handleCopy}
-                disabled={!output}
-                className="flex-1 py-2.5 bg-gray-800 hover:bg-gray-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-40"
-              >
-                {copied ? 'Copied!' : 'Copy'}
-              </button>
-              <button
-                onClick={handleDownload}
-                disabled={!output}
-                className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-40"
-              >
-                Download
-              </button>
-            </div>
+          <div className="flex gap-2">
+            <button onClick={copyOutput} className="flex-1 py-2.5 rounded bg-gray-800 hover:bg-gray-700">{copied ? 'Copied' : 'Copy'}</button>
+            <button onClick={downloadOutput} className="flex-1 py-2.5 rounded bg-emerald-600 hover:bg-emerald-500">Download</button>
           </div>
-        )}
-      </div>
+        </>
+      )}
     </div>
   );
 }

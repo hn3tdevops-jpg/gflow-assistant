@@ -1,30 +1,184 @@
+import { useMemo } from 'react';
+import type { Lyric, LyricVersion } from '../types/lyrics';
 import { useLocalStorage } from './useLocalStorage';
-import type { LyricProject } from '../types/lyrics';
+import { useCurrentUser } from './useCurrentUser';
+import { createEmptyLyric, normalizeSections, sectionsToText } from '../utils/lyricsStudio';
 
-const PROJECTS_KEY = 'gflow:lyrics:v1:projects';
+const LYRICS_KEY = 'gflow:studio:lyrics:v2';
+const VERSIONS_KEY = 'gflow:studio:lyric_versions:v2';
+
+function belongsToUser(userId: string, lyric: Lyric) {
+  return lyric.ownerUserId === userId;
+}
 
 export function useLyricsProjects() {
-  const [projects, setProjects] = useLocalStorage<LyricProject[]>(PROJECTS_KEY, []);
+  const [allLyrics, setAllLyrics] = useLocalStorage<Lyric[]>(LYRICS_KEY, []);
+  const [allVersions, setAllVersions] = useLocalStorage<LyricVersion[]>(VERSIONS_KEY, []);
+  const { userId } = useCurrentUser();
 
-  function saveProject(project: LyricProject): void {
-    setProjects((prev) => {
-      const idx = prev.findIndex((p) => p.id === project.id);
-      if (idx >= 0) {
-        const updated = [...prev];
-        updated[idx] = project;
-        return updated;
-      }
-      return [...prev, project];
+  const lyrics = useMemo(
+    () => allLyrics.filter((lyric) => belongsToUser(userId, lyric)),
+    [allLyrics, userId],
+  );
+
+  const versions = useMemo(
+    () => allVersions.filter((version) => {
+      const lyric = allLyrics.find((entry) => entry.id === version.lyricId);
+      return lyric ? belongsToUser(userId, lyric) : false;
+    }),
+    [allLyrics, allVersions, userId],
+  );
+
+  function createLyric(seed?: Partial<Lyric>) {
+    const lyric = { ...createEmptyLyric(userId), ...seed, ownerUserId: userId };
+    const normalizedSections = normalizeSections(lyric.sections);
+    const persisted = {
+      ...lyric,
+      sections: normalizedSections,
+      currentContent: sectionsToText(normalizedSections),
+    };
+    setAllLyrics((prev) => [...prev, persisted]);
+    return persisted;
+  }
+
+  function saveLyric(lyric: Lyric) {
+    if (!belongsToUser(userId, lyric)) return;
+    const normalizedSections = normalizeSections(lyric.sections);
+    const updated: Lyric = {
+      ...lyric,
+      ownerUserId: userId,
+      sections: normalizedSections,
+      currentContent: sectionsToText(normalizedSections),
+      updatedAt: new Date().toISOString(),
+    };
+
+    setAllLyrics((prev) => {
+      const idx = prev.findIndex((item) => item.id === lyric.id);
+      if (idx < 0) return [...prev, updated];
+      const next = [...prev];
+      next[idx] = updated;
+      return next;
     });
   }
 
-  function deleteProject(id: string): void {
-    setProjects((prev) => prev.filter((p) => p.id !== id));
+  function getLyric(id: string) {
+    const lyric = allLyrics.find((entry) => entry.id === id);
+    if (!lyric || !belongsToUser(userId, lyric)) return undefined;
+    return lyric;
   }
 
-  function getProject(id: string): LyricProject | undefined {
-    return projects.find((p) => p.id === id);
+  function deleteLyric(id: string) {
+    setAllLyrics((prev) => prev.filter((entry) => entry.id !== id || !belongsToUser(userId, entry)));
+    setAllVersions((prev) => prev.filter((version) => version.lyricId !== id));
   }
 
-  return { projects, saveProject, deleteProject, getProject };
+  function setArchived(id: string, archived: boolean) {
+    setAllLyrics((prev) => prev.map((lyric) => {
+      if (lyric.id !== id || !belongsToUser(userId, lyric)) return lyric;
+      return {
+        ...lyric,
+        status: archived ? 'archived' : lyric.status === 'archived' ? 'draft' : lyric.status,
+        archivedAt: archived ? new Date().toISOString() : undefined,
+        updatedAt: new Date().toISOString(),
+      };
+    }));
+  }
+
+  function toggleFavorite(id: string) {
+    setAllLyrics((prev) => prev.map((lyric) => {
+      if (lyric.id !== id || !belongsToUser(userId, lyric)) return lyric;
+      return { ...lyric, isFavorite: !lyric.isFavorite, updatedAt: new Date().toISOString() };
+    }));
+  }
+
+  function getLyricVersions(lyricId: string) {
+    const lyric = getLyric(lyricId);
+    if (!lyric) return [];
+    return versions
+      .filter((version) => version.lyricId === lyricId)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+
+  function saveVersion(lyricId: string, versionName: string) {
+    const lyric = getLyric(lyricId);
+    if (!lyric) return undefined;
+    const version: LyricVersion = {
+      id: crypto.randomUUID(),
+      lyricId,
+      versionName: versionName.trim() || `Version ${new Date().toLocaleString()}`,
+      content: lyric.currentContent,
+      metadataJson: JSON.stringify({
+        title: lyric.title,
+        status: lyric.status,
+        projectName: lyric.projectName,
+        albumName: lyric.albumName,
+        genre: lyric.genre,
+        mood: lyric.mood,
+      }),
+      sections: lyric.sections,
+      createdAt: new Date().toISOString(),
+      createdByUserId: userId,
+    };
+    setAllVersions((prev) => [version, ...prev]);
+    return version;
+  }
+
+  function restoreVersion(versionId: string) {
+    const version = versions.find((entry) => entry.id === versionId);
+    if (!version) return undefined;
+    const lyric = getLyric(version.lyricId);
+    if (!lyric) return undefined;
+    const restored: Lyric = {
+      ...lyric,
+      sections: normalizeSections(version.sections),
+      currentContent: version.content,
+      updatedAt: new Date().toISOString(),
+    };
+    saveLyric(restored);
+    return restored;
+  }
+
+  function duplicateVersionAsDraft(versionId: string, title?: string) {
+    const version = versions.find((entry) => entry.id === versionId);
+    if (!version) return undefined;
+    const source = getLyric(version.lyricId);
+    if (!source) return undefined;
+
+    const now = new Date().toISOString();
+    const lyric: Lyric = {
+      ...source,
+      id: crypto.randomUUID(),
+      title: title?.trim() || `${source.title} (Copy)` ,
+      sections: normalizeSections(version.sections.map((section) => ({ ...section, id: crypto.randomUUID() }))),
+      status: 'draft',
+      currentContent: version.content,
+      createdAt: now,
+      updatedAt: now,
+      archivedAt: undefined,
+      isFavorite: false,
+      ownerUserId: userId,
+    };
+    setAllLyrics((prev) => [lyric, ...prev]);
+    return lyric;
+  }
+
+  return {
+    userId,
+    lyrics,
+    projects: lyrics,
+    versions,
+    createLyric,
+    saveLyric,
+    saveProject: saveLyric,
+    getLyric,
+    getProject: getLyric,
+    deleteLyric,
+    deleteProject: deleteLyric,
+    toggleFavorite,
+    setArchived,
+    saveVersion,
+    getLyricVersions,
+    restoreVersion,
+    duplicateVersionAsDraft,
+  };
 }
