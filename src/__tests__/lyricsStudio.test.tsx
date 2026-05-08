@@ -1,0 +1,258 @@
+import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import Navbar from '../components/layout/Navbar';
+import { useLyricsProjects } from '../hooks/useLyricsProjects';
+import type { Lyric } from '../types/lyrics';
+import { buildLyricExport } from '../utils/lyricsStudioExports';
+import { createEmptyLyric, filterLyrics } from '../utils/lyricsStudio';
+import LyricsDetailPage from '../pages/lyrics/LyricsDetailPage';
+
+beforeEach(() => {
+  localStorage.clear();
+});
+
+describe('lyrics workflow', () => {
+  it('creates and edits a lyric', () => {
+    localStorage.setItem('gflow:studio:user', JSON.stringify('user-a'));
+    const { result } = renderHook(() => useLyricsProjects());
+
+    let createdId = '';
+    act(() => {
+      const created = result.current.createLyric({ title: 'First Song' });
+      createdId = created.id;
+    });
+
+    expect(result.current.lyrics).toHaveLength(1);
+    expect(result.current.lyrics[0].title).toBe('First Song');
+
+    act(() => {
+      const lyric = result.current.getLyric(createdId);
+      if (!lyric) throw new Error('lyric missing');
+      result.current.saveLyric({ ...lyric, title: 'First Song Updated', mood: 'melancholic' });
+    });
+
+    expect(result.current.getLyric(createdId)?.title).toBe('First Song Updated');
+    expect(result.current.getLyric(createdId)?.mood).toBe('melancholic');
+  });
+
+  it('lists only current user lyrics and denies other user lyric access', () => {
+    localStorage.setItem('gflow:studio:user', JSON.stringify('user-a'));
+    const { result, unmount } = renderHook(() => useLyricsProjects());
+
+    let userALyricId = '';
+    act(() => {
+      userALyricId = result.current.createLyric({ title: 'User A Song' }).id;
+    });
+
+    expect(result.current.lyrics.map((entry) => entry.title)).toContain('User A Song');
+
+    unmount();
+    localStorage.setItem('gflow:studio:user', JSON.stringify('user-b'));
+    const second = renderHook(() => useLyricsProjects());
+
+    expect(second.result.current.lyrics).toHaveLength(0);
+    expect(second.result.current.getLyric(userALyricId)).toBeUndefined();
+
+    act(() => {
+      second.result.current.createLyric({ title: 'User B Song' });
+    });
+
+    expect(second.result.current.lyrics).toHaveLength(1);
+    expect(second.result.current.lyrics[0].title).toBe('User B Song');
+
+    second.unmount();
+    localStorage.setItem('gflow:studio:user', JSON.stringify('user-a'));
+    const third = renderHook(() => useLyricsProjects());
+
+    expect(third.result.current.lyrics).toHaveLength(1);
+    expect(third.result.current.getLyric(userALyricId)?.title).toBe('User A Song');
+  });
+
+  it('saves and restores lyric versions', () => {
+    localStorage.setItem('gflow:studio:user', JSON.stringify('user-a'));
+    const { result } = renderHook(() => useLyricsProjects());
+
+    let lyricId = '';
+    act(() => {
+      const lyric = result.current.createLyric({ title: 'Versioned Song' });
+      lyricId = lyric.id;
+      result.current.saveLyric({ ...lyric, currentContent: 'Line A', sections: [{ ...lyric.sections[0], content: 'Line A' }] });
+    });
+
+    act(() => {
+      result.current.saveVersion(lyricId, 'Original Draft');
+    });
+
+    act(() => {
+      const lyric = result.current.getLyric(lyricId);
+      if (!lyric) throw new Error('lyric missing');
+      result.current.saveLyric({ ...lyric, currentContent: 'Line B', sections: [{ ...lyric.sections[0], content: 'Line B' }] });
+    });
+
+    const versions = result.current.getLyricVersions(lyricId);
+    expect(versions).toHaveLength(1);
+    expect(versions[0].versionName).toBe('Original Draft');
+
+    act(() => {
+      result.current.restoreVersion(versions[0].id);
+    });
+
+    expect(result.current.getLyric(lyricId)?.currentContent).toContain('Line A');
+  });
+
+  it('filters lyrics by query and metadata', () => {
+    const owner = 'user-z';
+    const make = (title: string, mood: string, tags: string[]): Lyric => {
+      const base = createEmptyLyric(owner);
+      return { ...base, title, mood, tags, genre: mood === 'dark' ? 'rap' : 'pop' };
+    };
+
+    const data = [make('Night Drive', 'dark', ['city']), make('Summer Bloom', 'bright', ['sun'])];
+    const filtered = filterLyrics(data, {
+      query: 'night',
+      status: '',
+      project: '',
+      tag: '',
+      genre: '',
+      favoriteOnly: false,
+    });
+
+    expect(filtered).toHaveLength(1);
+    expect(filtered[0].title).toBe('Night Drive');
+  });
+
+  it('exports lyric data in markdown', () => {
+    const lyric = createEmptyLyric('user-a');
+    lyric.title = 'Export Song';
+    lyric.sections[0].content = 'Hello export';
+    const output = buildLyricExport(lyric, 'md');
+    expect(output).toContain('# Export Song');
+    expect(output).toContain('Hello export');
+  });
+});
+
+describe('mobile navigation', () => {
+  it('renders expected primary links', () => {
+    render(
+      <MemoryRouter>
+        <Navbar />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('link', { name: 'Home' })).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: 'Lyrics' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('link', { name: 'Projects' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('link', { name: 'Tools' }).length).toBeGreaterThan(0);
+    expect(screen.getByRole('link', { name: 'Account' })).toBeInTheDocument();
+  });
+});
+
+describe('lyrics detail page regressions', () => {
+  function readStoredLyric(lyricId: string) {
+    const raw = localStorage.getItem('gflow:studio:lyrics:v2');
+    const all = raw ? (JSON.parse(raw) as Lyric[]) : [];
+    return all.find((entry) => entry.id === lyricId);
+  }
+
+  function renderDetailPage(lyricId: string) {
+    return render(
+      <MemoryRouter initialEntries={[`/lyrics/${lyricId}`]}>
+        <Routes>
+          <Route path="/lyrics/:id" element={<LyricsDetailPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+  }
+
+  it('does not autosave when content remains unchanged', () => {
+    vi.useFakeTimers();
+    localStorage.setItem('gflow:studio:user', JSON.stringify('user-a'));
+    const { result } = renderHook(() => useLyricsProjects());
+
+    let lyricId = '';
+    let originalUpdatedAt = '';
+    act(() => {
+      const created = result.current.createLyric({ title: 'Idle Song' });
+      lyricId = created.id;
+      originalUpdatedAt = created.updatedAt;
+    });
+
+    renderDetailPage(lyricId);
+
+    act(() => {
+      vi.advanceTimersByTime(3000);
+    });
+
+    expect(readStoredLyric(lyricId)?.updatedAt).toBe(originalUpdatedAt);
+    vi.useRealTimers();
+  });
+
+  it('persists favorite changes from detail page', async () => {
+    localStorage.setItem('gflow:studio:user', JSON.stringify('user-a'));
+    const { result } = renderHook(() => useLyricsProjects());
+
+    let lyricId = '';
+    act(() => {
+      lyricId = result.current.createLyric({ title: 'Favorite Song' }).id;
+    });
+
+    renderDetailPage(lyricId);
+    fireEvent.click(screen.getByRole('button', { name: '☆ Favorite' }));
+
+    await waitFor(() => expect(readStoredLyric(lyricId)?.isFavorite).toBe(true));
+    expect(screen.getByRole('button', { name: '★ Favorited' })).toBeInTheDocument();
+  });
+
+  it('persists archive and unarchive from detail page', async () => {
+    localStorage.setItem('gflow:studio:user', JSON.stringify('user-a'));
+    const { result } = renderHook(() => useLyricsProjects());
+
+    let lyricId = '';
+    act(() => {
+      lyricId = result.current.createLyric({ title: 'Archive Song' }).id;
+    });
+
+    renderDetailPage(lyricId);
+    fireEvent.click(screen.getByRole('button', { name: 'Archive lyric' }));
+    await waitFor(() => expect(readStoredLyric(lyricId)?.archivedAt).toBeTruthy());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Restore from archive' }));
+    await waitFor(() => expect(readStoredLyric(lyricId)?.archivedAt).toBeUndefined());
+  });
+
+  it('updates visible editor content after restoring a version', async () => {
+    localStorage.setItem('gflow:studio:user', JSON.stringify('user-a'));
+    const { result } = renderHook(() => useLyricsProjects());
+
+    let lyricId = '';
+    act(() => {
+      const created = result.current.createLyric({ title: 'Version Restore Song' });
+      lyricId = created.id;
+      result.current.saveLyric({
+        ...created,
+        currentContent: 'Line A',
+        sections: [{ ...created.sections[0], content: 'Line A' }],
+      });
+    });
+
+    act(() => {
+      result.current.saveVersion(lyricId, 'Original');
+    });
+
+    act(() => {
+      const latest = result.current.getLyric(lyricId);
+      if (!latest) throw new Error('lyric missing');
+      result.current.saveLyric({
+        ...latest,
+        currentContent: 'Line B',
+        sections: [{ ...latest.sections[0], content: 'Line B' }],
+      });
+    });
+
+    renderDetailPage(lyricId);
+    expect(screen.getByDisplayValue('Line B')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Restore' }));
+    await waitFor(() => expect(screen.getByDisplayValue('Line A')).toBeInTheDocument());
+  });
+});
